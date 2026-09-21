@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#5d4037" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>中鋼三班四輪出勤表</title>
+  <script src="https://unpkg.com/solarlunar@3.1.0/dist/solarlunar.min.js"></script>
+  <style>
+    :root {
+      --bg: #f3eee4;
+      --card: #fffdf8;
+      --ink: #2c2416;
+      --muted: #7a6e5b;
+      --line: #e4d9c5;
+      --today: #c62828;
+      --accent: #bf360c;
+      --bar: #5d4037;
+      --a: #c62828;
+      --a-bg: #fdecea;
+      --b: #0277bd;
+      --b-bg: #e3f2fd;
+      --c: #2e7d32;
+      --c-bg: #e8f5e9;
+      --d: #6a1b9a;
+      --d-bg: #f3e5f5;
+      --early: #2e7d32;
+      --early-bg: #e8f5e9;
+      --mid: #1565c0;
+      --mid-bg: #e3f2fd;
+      --late: #6a1b9a;
+      --late-bg: #f3e5f5;
+      --off: #757575;
+      --off-bg: #eceff1;
+      --safe-t: env(safe-area-inset-top, 0px);
+      --safe-b: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      padding: calc(8px + var(--safe-t)) 6px calc(14px + var(--safe-b));
+    }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 8px; }
+    header h1 { font-size: 1.05rem; letter-spacing: .06em; color: #4e342e; }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 6px;
+      margin-bottom: 8px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .toolbar select, .toolbar button {
+      font: inherit;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #d7cbb6;
+      background: #fff;
+      height: 36px;
+      padding: 0 6px;
+      color: var(--ink);
+    }
+    .toolbar button {
+      border: none;
+      font-weight: 700;
+      white-space: nowrap;
+      padding: 0 10px;
+    }
+    #y { width: 76px; }
+    #m, #d { width: 52px; }
+    #team { width: 72px; font-weight: 700; }
+    #go { background: var(--bar); color: #fff; }
+    #todayBtn { background: #efe6d4; color: #4e342e; }
+
+    .month-nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0 0 8px;
+    }
+    .month-nav h2 { flex: 1; text-align: center; font-size: .98rem; line-height: 1.25; }
+    .month-nav button {
+      font: inherit;
+      border: none;
+      background: #efe6d4;
+      color: #4e342e;
+      border-radius: 8px;
+      min-width: 40px;
+      height: 36px;
+    }
+
+    .cal {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      touch-action: pan-y;
+    }
+    .weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      background: var(--bar);
+      color: #fff8e7;
+      text-align: center;
+      font-size: .8rem;
+      padding: 8px 0;
+    }
+    .days { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .day {
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding: 6px 3px 7px;
+      cursor: pointer;
+      min-width: 0;
+    }
+    .day:nth-child(7n) { border-right: none; }
+    .day.out { background: #f7f3eb; opacity: .72; }
+    .day.today { box-shadow: inset 0 0 0 2px var(--today); background: #fff8f0; }
+    .day.hit { box-shadow: inset 0 0 0 2px #2e7d32; }
+    .date-num { font-size: 1.05rem; font-weight: 800; line-height: 1.15; }
+    .lunar {
+      font-size: .68rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin: 1px 0 4px;
+    }
+    .lunar .term { color: var(--accent); margin-left: 2px; }
+
+    .lines { display: flex; flex-direction: column; gap: 3px; }
+    .ln {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 5px;
+      padding: 3px 4px;
+      font-size: .72rem;
+      font-weight: 700;
+      line-height: 1.3;
+      min-width: 0;
+    }
+    .ln .who { flex: 0 0 auto; margin-right: 2px; }
+    .ln .sh { flex: 1; text-align: left; }
+    .ln .nth { flex: 0 0 auto; font-weight: 600; opacity: .9; }
+    .ln.A { background: var(--a-bg); color: var(--a); }
+    .ln.B { background: var(--b-bg); color: var(--b); }
+    .ln.C { background: var(--c-bg); color: var(--c); }
+    .ln.D { background: var(--d-bg); color: var(--d); }
+    .ln.s-早 { background: var(--early-bg); color: var(--early); }
+    .ln.s-中 { background: var(--mid-bg); color: var(--mid); }
+    .ln.s-晚 { background: var(--late-bg); color: var(--late); }
+    .ln.s-休 { background: var(--off-bg); color: var(--off); }
+    .ln.solo {
+      font-size: clamp(0.82rem, 3.6vw, 1.05rem);
+      padding: 6px 3px;
+      justify-content: center;
+      gap: 4px;
+      overflow: hidden;
+    }
+    .ln.solo .who { display: none; }
+    .ln.solo .sh { flex: 0; font-size: 1em; letter-spacing: 0; }
+    .ln.solo .nth { font-size: 1em; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      justify-content: center;
+      margin-top: 8px;
+      font-size: .74rem;
+      color: var(--muted);
+    }
+    .note {
+      margin-top: 8px;
+      font-size: .72rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .sheet-bg {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 20;
+    }
+    .sheet-bg.show { display: block; }
+    .sheet {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      background: var(--card);
+      border-radius: 16px 16px 0 0;
+      padding: 12px 14px calc(16px + var(--safe-b));
+      z-index: 21;
+      transform: translateY(110%);
+      transition: transform .22s ease;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .sheet.show { transform: translateY(0); }
+    .handle { width: 40px; height: 4px; border-radius: 4px; background: #d7cbb6; margin: 0 auto 10px; }
+    .sheet h3 { font-size: 1.02rem; margin-bottom: 4px; }
+    .sheet .sub { color: var(--muted); font-size: .82rem; margin-bottom: 10px; }
+    .grid4 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .card-shift { border-radius: 12px; padding: 10px 8px; text-align: center; }
+    .card-shift.A { background: var(--a-bg); color: var(--a); }
+    .card-shift.B { background: var(--b-bg); color: var(--b); }
+    .card-shift.C { background: var(--c-bg); color: var(--c); }
+    .card-shift.D { background: var(--d-bg); color: var(--d); }
+    .card-shift b { display: block; font-size: 1.25rem; }
+
+    @media (min-width: 700px) {
+      .ln { font-size: .86rem; padding: 4px 6px; }
+      .ln.solo { font-size: 1.05rem; padding: 8px 6px; }
+      .date-num { font-size: 1.2rem; }
+      .lunar { font-size: .78rem; }
+      .day { padding: 8px 5px 8px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>中鋼　三班四輪出勤表</h1>
+    </header>
+
+    <div class="toolbar">
+      <select id="y" aria-label="年"></select>
+      <select id="m" aria-label="月"></select>
+      <select id="d" aria-label="日"></select>
+      <button id="go">查詢</button>
+      <select id="team" aria-label="股別">
+        <option value="ALL">全部</option>
+        <option value="A">A股</option>
+        <option value="B">B股</option>
+        <option value="C">C股</option>
+        <option value="D">D股</option>
+      </select>
+      <button id="todayBtn">今天</button>
+    </div>
+
+    <div class="month-nav">
+      <button id="prev">‹</button>
+      <h2 id="title"></h2>
+      <button id="next">›</button>
+    </div>
+
+    <div class="cal" id="cal">
+      <div class="weekdays">
+        <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+      </div>
+      <div class="days" id="days"></div>
+    </div>
+
+    <div class="legend">
+      <span style="color:var(--a)">■ A股</span>
+      <span style="color:var(--b)">■ B股</span>
+      <span style="color:var(--c)">■ C股</span>
+      <span style="color:var(--d)">■ D股</span>
+      <span>早 07:00–15:10</span>
+      <span>中 15:00–23:10</span>
+      <span>晚 23:00–07:10</span>
+    </div>
+    <p class="note">20 天循環：早5→休2→晚5→休2→中5→休1。A／B／C／D 各錯開 5 天。實際出勤以公司正式班表為準。</p>
+  </div>
+
+  <div class="sheet-bg" id="mask"></div>
+  <div class="sheet" id="sheet">
+    <div class="handle"></div>
+    <h3 id="sheetTitle"></h3>
+    <div class="sub" id="sheetSub"></div>
+    <div class="grid4" id="sheetGrid"></div>
+  </div>
+
+  <script>
+    const PATTERN = [
+      '休',
+      '早','早','早','早','早',
+      '休','休',
+      '晚','晚','晚','晚','晚',
+      '休','休',
+      '中','中','中','中','中'
+    ];
+    const OFFSET = { A: 0, B: 5, C: 10, D: 15 };
+    const REF = Date.UTC(2026, 5, 23);
+    const TIMES = { '早': '07:00–15:10', '中': '15:00–23:10', '晚': '23:00–07:10', '休': '輪休日' };
+    const WEEK = ['日','一','二','三','四','五','六'];
+
+    let viewY, viewM, hitDay = null, myTeam = 'ALL';
+
+    function dayIndex(y, m, d) {
+      const days = Math.floor((Date.UTC(y, m - 1, d) - REF) / 86400000);
+      return ((days % 20) + 20) % 20;
+    }
+    function detailOf(patternIndex) {
+      const shift = PATTERN[patternIndex];
+      let start = patternIndex;
+      while (start > 0 && PATTERN[start - 1] === shift) start--;
+      let end = patternIndex;
+      while (end < 19 && PATTERN[end + 1] === shift) end++;
+      return { shift, day: patternIndex - start + 1, total: end - start + 1 };
+    }
+    function shiftsOf(y, m, d) {
+      const i = dayIndex(y, m, d);
+      const out = {};
+      for (const t of ['A','B','C','D']) {
+        out[t] = detailOf((i + OFFSET[t]) % 20);
+      }
+      return out;
+    }
+    function rocYear(y){ return y - 1911; }
+    function lunarText(y, m, d) {
+      if (typeof solarLunar === 'undefined') return { text: '', term: '' };
+      try {
+        const L = solarLunar.solar2lunar(y, m, d);
+        return { text: (L.monthCn || '') + (L.dayCn || ''), term: (L.isTerm && L.term) ? L.term : '' };
+      } catch(e) { return { text: '', term: '' }; }
+    }
+    function daysInMonth(y, m){ return new Date(y, m, 0).getDate(); }
+
+    function fillSelects() {
+      const yEl = document.getElementById('y');
+      const mEl = document.getElementById('m');
+      if (!yEl.options.length) {
+        for (let y = 2020; y <= 2040; y++) {
+          const o = document.createElement('option');
+          o.value = y;
+          o.textContent = y;
+          yEl.appendChild(o);
+        }
+        for (let m = 1; m <= 12; m++) {
+          const o = document.createElement('option');
+          o.value = m;
+          o.textContent = m + '月';
+          mEl.appendChild(o);
+        }
+      }
+    }
+    function fillDays(y, m, keepDay) {
+      const dEl = document.getElementById('d');
+      const max = daysInMonth(y, m);
+      const cur = keepDay ? Math.min(keepDay, max) : (+dEl.value || 1);
+      dEl.innerHTML = '';
+      for (let d = 1; d <= max; d++) {
+        const o = document.createElement('option');
+        o.value = d;
+        o.textContent = d + '日';
+        dEl.appendChild(o);
+      }
+      dEl.value = String(Math.min(cur, max));
+    }
+
+    function render() {
+      document.getElementById('title').innerHTML =
+        `${viewY}年${viewM}月　<span style="font-weight:500;color:#7a6e5b;font-size:.82rem">民國${rocYear(viewY)}年</span>`;
+
+      const first = new Date(viewY, viewM - 1, 1);
+      const startWeek = first.getDay();
+      const lastDate = daysInMonth(viewY, viewM);
+      const prevLast = daysInMonth(viewM === 1 ? viewY - 1 : viewY, viewM === 1 ? 12 : viewM - 1);
+      const today = new Date();
+      const ty = today.getFullYear(), tm = today.getMonth()+1, td = today.getDate();
+
+      const cells = [];
+      for (let i = 0; i < startWeek; i++) {
+        const dd = prevLast - startWeek + 1 + i;
+        const py = viewM === 1 ? viewY - 1 : viewY;
+        const pm = viewM === 1 ? 12 : viewM - 1;
+        cells.push(cellHtml(py, pm, dd, true, ty, tm, td));
+      }
+      for (let dd = 1; dd <= lastDate; dd++) cells.push(cellHtml(viewY, viewM, dd, false, ty, tm, td));
+      const remain = (7 - (cells.length % 7)) % 7;
+      for (let i = 1; i <= remain; i++) {
+        const ny = viewM === 12 ? viewY + 1 : viewY;
+        const nm = viewM === 12 ? 1 : viewM + 1;
+        cells.push(cellHtml(ny, nm, i, true, ty, tm, td));
+      }
+      document.getElementById('days').innerHTML = cells.join('');
+    }
+
+    function cellHtml(y, m, d, out, ty, tm, td) {
+      const sh = shiftsOf(y, m, d);
+      const lu = lunarText(y, m, d);
+      const isToday = y===ty && m===tm && d===td;
+      const isHit = hitDay && y===hitDay.y && m===hitDay.m && d===hitDay.d;
+      const cls = ['day', out?'out':'', isToday?'today':'', isHit?'hit':''].filter(Boolean).join(' ');
+      const teams = myTeam === 'ALL' ? ['A','B','C','D'] : [myTeam];
+      const lines = teams.map(t => {
+        const info = sh[t];
+        const colorCls = info.shift === '休' ? 's-休' : (myTeam === 'ALL' ? t : `s-${info.shift}`);
+        const solo = myTeam === 'ALL' ? '' : ' solo';
+        return `<div class="ln ${colorCls}${solo}"><span class="who">${t}</span><span class="sh">${info.shift}</span><span class="nth">${info.day}</span></div>`;
+      }).join('');
+      return `<div class="${cls}" data-y="${y}" data-m="${m}" data-d="${d}">
+        <div class="date-num">${d}</div>
+        <div class="lunar">${lu.text}${lu.term ? `<span class="term">${lu.term}</span>` : ''}</div>
+        <div class="lines">${lines}</div>
+      </div>`;
+    }
+
+    function setView(y, m, highlightDay) {
+      viewY = y; viewM = m;
+      hitDay = highlightDay ? { y, m, d: highlightDay } : null;
+      document.getElementById('y').value = String(y);
+      document.getElementById('m').value = String(m);
+      fillDays(y, m, highlightDay || +document.getElementById('d').value);
+      if (highlightDay) document.getElementById('d').value = String(highlightDay);
+      render();
+    }
+
+    function openSheet(y, m, d) {
+      const sh = shiftsOf(y, m, d);
+      const lu = lunarText(y, m, d);
+      const dt = new Date(y, m-1, d);
+      document.getElementById('sheetTitle').textContent = `${y}/${m}/${d}　星期${WEEK[dt.getDay()]}`;
+      document.getElementById('sheetSub').textContent = `農曆 ${lu.text}${lu.term ? '　' + lu.term : ''}　·　民國${rocYear(y)}年`;
+      document.getElementById('sheetGrid').innerHTML = ['A','B','C','D'].map(t => {
+        const info = sh[t];
+        return `<div class="card-shift ${t}"><small>${t}股</small><b>${info.shift} ${info.day}</b><small>${TIMES[info.shift]}</small></div>`;
+      }).join('');
+      document.getElementById('mask').classList.add('show');
+      document.getElementById('sheet').classList.add('show');
+    }
+    function closeSheet() {
+      document.getElementById('mask').classList.remove('show');
+      document.getElementById('sheet').classList.remove('show');
+    }
+
+    document.getElementById('prev').onclick = () => {
+      let y = viewY, m = viewM - 1;
+      if (m < 1) { m = 12; y--; }
+      setView(y, m, null);
+    };
+    document.getElementById('next').onclick = () => {
+      let y = viewY, m = viewM + 1;
+      if (m > 12) { m = 1; y++; }
+      setView(y, m, null);
+    };
+    document.getElementById('go').onclick = () => {
+      const y = +document.getElementById('y').value;
+      const m = +document.getElementById('m').value;
+      const d = +document.getElementById('d').value;
+      setView(y, m, d);
+    };
+    document.getElementById('todayBtn').onclick = () => {
+      const n = new Date();
+      setView(n.getFullYear(), n.getMonth()+1, n.getDate());
+    };
+    document.getElementById('y').onchange = () => fillDays(+document.getElementById('y').value, +document.getElementById('m').value);
+    document.getElementById('m').onchange = () => fillDays(+document.getElementById('y').value, +document.getElementById('m').value);
+    document.getElementById('team').onchange = (e) => {
+      myTeam = e.target.value;
+      render();
+    };
+    document.getElementById('days').addEventListener('click', (e) => {
+      const el = e.target.closest('.day');
+      if (!el) return;
+      openSheet(+el.dataset.y, +el.dataset.m, +el.dataset.d);
+    });
+    document.getElementById('mask').onclick = closeSheet;
+
+    let sx = 0, sy = 0;
+    const cal = document.getElementById('cal');
+    cal.addEventListener('touchstart', (e) => {
+      sx = e.changedTouches[0].clientX;
+      sy = e.changedTouches[0].clientY;
+    }, { passive: true });
+    cal.addEventListener('touchend', (e) => {
+      const dx = e.changedTouches[0].clientX - sx;
+      const dy = e.changedTouches[0].clientY - sy;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        if (dx < 0) document.getElementById('next').click();
+        else document.getElementById('prev').click();
+      }
+    }, { passive: true });
+
+    (function init(){
+      fillSelects();
+      const n = new Date();
+      fillDays(n.getFullYear(), n.getMonth()+1, n.getDate());
+      setView(n.getFullYear(), n.getMonth()+1, n.getDate());
+    })();
+  </script>
+</body>
+</html>
